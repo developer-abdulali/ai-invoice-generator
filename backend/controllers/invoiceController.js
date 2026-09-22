@@ -247,3 +247,18 @@ export const getInvoices = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// Get invoice by ID
+export const getInvoiceById = async (req, res) => {
+  try {
+    const { userId } = getAuth(req) || {};
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Authentication required" });
+    }
+  } catch (error) {
+    console.error("GET INVOICE BY ID ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
