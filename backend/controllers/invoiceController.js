@@ -249,7 +249,7 @@ export const getInvoices = async (req, res) => {
 };
 
 // Get invoice by ID
-export const getInvoiceById = async (req, res) => {
+export const getInvoice = async (req, res) => {
   try {
     const { userId } = getAuth(req) || {};
     if (!userId) {
@@ -257,8 +257,192 @@ export const getInvoiceById = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Authentication required" });
     }
+
+    const { id } = req.params;
+    let inv;
+    if (isObjIdString(id)) {
+      inv = await Invoice.findById(id);
+    } else {
+      inv = await Invoice.findOne({ invoiceNumber: id });
+    }
+
+    if (!inv) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Invoice not found" });
+    }
+    if (inv.owner && String(inv.owner) !== String(userId)) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Forbidden: Not your invoice" });
+    }
+
+    return res.status(200).json({ success: true, data: inv });
   } catch (error) {
     console.error("GET INVOICE BY ID ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Update invoice
+// Get invoice by ID
+export const updateInvoice = async (req, res) => {
+  try {
+    const { userId } = getAuth(req) || {};
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Authentication required" });
+    }
+
+    const { id } = req.params;
+    const body = req.body || {};
+
+    const query = isObjIdString(id)
+      ? { _id: id, ower: userId }
+      : { invoiceNumber: id, owner: userId };
+
+    const existingInvoice = await Invoice.findOne(query);
+    if (!existingInvoice) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Invoice not found" });
+    }
+
+    // If user changes the invoice number
+    // Ensure that it not exists already or not in use
+    if (
+      body.invoiceNumber &&
+      String(body.invoiceNumber).trim() !== existing.invoiceNumber
+    ) {
+      const conflict = await Invoice.findOne({
+        invoiceNumber: String(body.invoiceNumber).trim(),
+      });
+      if (conflict && String(conflict._id) !== String(existing._id)) {
+        return res
+          .status(409)
+          .json({ success: false, message: "Invoice number already exists" });
+      }
+    }
+
+    let items = [];
+    if (Array.isArray(body.items)) items = body.items;
+    else if (typeof body.items === "string" && body.items.length) {
+      try {
+        items = JSON.parse(body.items);
+      } catch {
+        items = [];
+      }
+    }
+
+    const taxPercent = Number(
+      body.taxPercent ??
+        body.tax ??
+        body.defaultTaxPercent ??
+        existing.taxPercent ??
+        0,
+    );
+    const totals = computeTotals(items, taxPercent);
+    const fileUrls = uploadedFilesToUrls(req);
+
+    // Update fields
+    const update = {
+      invoiceNumber: body.invoiceNumber,
+      issueDate: body.issueDate,
+      dueDate: body.dueDate,
+      fromBusinessName: body.fromBusinessName,
+      fromEmail: body.fromEmail,
+      fromAddress: body.fromAddress,
+      fromPhone: body.fromPhone,
+      fromGst: body.fromGst,
+      client:
+        typeof body.client === "string" && body.client.trim()
+          ? { name: body.client }
+          : body.client || existing.client || {},
+      items,
+      subtotal: totals.subtotal,
+      tax: totals.tax,
+      total: totals.total,
+      currency: body.currency,
+      status: body.status ? String(body.status).toLowerCase() : undefined,
+      taxPercent,
+      logoDataUrl:
+        fileUrls.logoDataUrl || body.logoDataUrl || body.logo || undefined,
+      stampDataUrl:
+        fileUrls.stampDataUrl || body.stampDataUrl || body.stamp || undefined,
+      signatureDataUrl:
+        fileUrls.signatureDataUrl ||
+        body.signatureDataUrl ||
+        body.signature ||
+        undefined,
+      signatureName: body.signatureName,
+      signatureTitle: body.signatureTitle,
+      notes: body.notes,
+    };
+
+    Object.keys(update).forEach((key) => {
+      if (update[key] === undefined) delete update[key];
+    });
+
+    const updated = await Invoice.findOneAndUpdate(
+      { _id: existingInvoice._id },
+      { $set: update },
+      { new: true, runValidators: true },
+    );
+
+    if (!updated) {
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to update invoice" });
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Invoice updated", data: updated });
+  } catch (err) {
+    console.error("updateInvoice error:", err);
+    if (
+      err &&
+      err.code === 11000 &&
+      err.keyPattern &&
+      err.keyPattern.invoiceNumber
+    ) {
+      return res
+        .status(409)
+        .json({ success: false, message: "Invoice number already exists" });
+    }
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Delete invoice
+export const deleteInvoice = async (req, res) => {
+  try {
+    const { userId } = getAuth(req) || {};
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Authentication required" });
+    }
+
+    const { id } = req.params;
+    const query = isObjIdString(id)
+      ? { _id: id, owner: userId }
+      : { invoiceNumber: id, owner: userId };
+
+    const found = await Invoice.findOne(query);
+    if (!found) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Invoice not found" });
+    }
+
+    await Invoice.deleteOne({ _id: found._id });
+    return res
+      .status(200)
+      .json({ success: true, message: "Invoice deleted successfully" });
+  } catch (err) {
+    console.error("deleteInvoice error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
