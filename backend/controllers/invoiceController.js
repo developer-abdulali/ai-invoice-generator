@@ -19,7 +19,7 @@ const computeTotals = (items = [], taxPercent = 0) => {
 };
 
 // Parse formdata items
-const parseItems = (val) => {
+const parseItemsField = (val) => {
   if (!val) return [];
   if (Array.isArray(val)) return val;
 

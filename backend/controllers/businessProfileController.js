@@ -23,7 +23,7 @@ const uploadedFilesToUrls = (req) => {
 };
 
 // Create a business profile
-const createBusinessProfile = async (req, res) => {
+export const createBusinessProfile = async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
@@ -58,6 +58,92 @@ const createBusinessProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("CREATE BUSINESS PROFILE ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// Create a business profile
+export const updateBusinessProfile = async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const body = req.body || {};
+    const fileUrls = uploadedFilesToUrls(req);
+
+    const existingProfile = await BusinessProfile.findById(id);
+    if (!existingProfile) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Business profile not found" });
+    }
+
+    if (existingProfile.owner.toString() !== userId) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Forbidden: Not your profile" });
+    }
+
+    const update = {};
+
+    if (body.businessName !== undefined)
+      update.businessName = body.businessName;
+    if (body.email !== undefined) update.email = body.email;
+    if (body.address !== undefined) update.address = body.address;
+    if (body.phone !== undefined) update.phone = body.phone;
+    if (body.gst !== undefined) update.gst = body.gst;
+
+    if (fileUrls.logoUrl) update.logoUrl = fileUrls.logoUrl;
+    else if (body.logoUrl !== undefined) update.logoUrl = body.logoUrl;
+
+    if (fileUrls.stampUrl) update.stampUrl = fileUrls.stampUrl;
+    else if (body.stampUrl !== undefined) update.stampUrl = body.stampUrl;
+
+    if (fileUrls.signatureUrl) update.signatureUrl = fileUrls.signatureUrl;
+    else if (body.signatureUrl !== undefined)
+      update.signatureUrl = body.signatureUrl;
+
+    if (body.signatureOwnerName !== undefined)
+      update.signatureOwnerName = body.signatureOwnerName;
+    if (body.signatureOwnerTitle !== undefined)
+      update.signatureOwnerTitle = body.signatureOwnerTitle;
+    if (body.defaultTaxPercent !== undefined)
+      update.defaultTaxPercent = Number(body.defaultTaxPercent);
+
+    const updatedProfile = await BusinessProfile.findByIdAndUpdate(id, update, {
+      runvalidators: true,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: updatedProfile,
+      message: "Business profile updated successfully",
+    });
+  } catch (error) {
+    console.error("UPDATE BUSINESS PROFILE ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// Get my business profile
+export const getMyBusinessProfile = async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const profile = await BusinessProfile.findOne({ owner: userId }).lean();
+    if (!profile) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Business profile not found" });
+    }
+    return res.status(200).json({ success: true, data: profile });
+  } catch (error) {
+    console.error("GET MY BUSINESS PROFILE ERROR:", error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
