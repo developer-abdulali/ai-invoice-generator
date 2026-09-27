@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { getAuth } from "@clerk/express";
 import BusinessProfile from "../models/businessProfileModel.js";
+import Invoice from "../models/invoiceModel.js";
 
 const API_BASE = "http://localhost:5000";
 
@@ -144,6 +145,38 @@ export const getMyBusinessProfile = async (req, res) => {
     return res.status(200).json({ success: true, data: profile });
   } catch (error) {
     console.error("GET MY BUSINESS PROFILE ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// Delete a business profile
+export const deleteBusinessProfile = async (req, res) => {
+  try {
+    const { userId } = getAuth(req) || {};
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const query = isObjectIdString(id)
+      ? { _id: id, owner: userId }
+      : { invoiceNumber: id, owner: userId };
+
+    const invoiceFound = await Invoice.findOne(query);
+    if (!invoiceFound) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Invoice not found" });
+    }
+
+    await Invoice.deleteOne({ _id: invoiceFound._id });
+    return res.status(200).json({
+      success: true,
+      message: "Invoice deleted successfully",
+    });
+  } catch (error) {
+    console.error("DELETE BUSINESS PROFILE ERROR:", error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };

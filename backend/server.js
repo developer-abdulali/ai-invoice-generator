@@ -5,6 +5,7 @@ import express from "express";
 import path from "path";
 import connectDB from "./config/connectDB.js";
 import invoiceRouter from "./routes/invoiceRouter.js";
+import businessProfileRouter from "./routes/businessProfileRouter.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +23,7 @@ connectDB();
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.use("/api/invoices", invoiceRouter);
+app.use("/api/business-profiles", businessProfileRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
