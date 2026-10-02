@@ -68,3 +68,59 @@ input:disabled {
   text-decoration: line-through;
   opacity: 0.75;
 }
+
+.hero-daypicker .rdp-day:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+.compact-uploadthing {
+  min-height: 150px !important;
+}
+
+.compact-uploadthing > div {
+  min-height: 150px !important;
+  height: 150px !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.compact-uploadthing [data-ut-element="dropzone"] {
+  min-height: 150px !important;
+  height: 150px !important;
+  justify-content: center !important;
+  gap: 0.35rem !important;
+}
+
+.compact-uploadthing > svg {
+  width: 42px !important;
+  height: 42px !important;
+}
+
+.compact-uploadthing button {
+  margin-top: 0.2rem !important;
+}
+
+@keyframes hostlistingCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.host-listing-card {
+  opacity: 0;
+  animation: hostlistingCardIn 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .host-listing-card {
+    animation: none;
+    opacity: 1;
+  }
+}
